@@ -175,8 +175,8 @@ async function sendRatesEmail(emails = [{
         const request = await mailjet.post("send", { version: 'v3.1' }).request({
             Messages: [{
                 From: {
-                    Email: "kanushkanet@gmail.com",
-                    Name: "KeepRates"
+                    Email: "keeprates@kanushka.com",
+                    Name: "Keep Rates"
                 },
                 To: emails,
                 Subject: `USD Rate Update: ${latestRate} LKR ${trends[0]?.trend || ''}`,

@@ -92,10 +92,10 @@ const createEmailTemplate = ({
                                 For current exchange rates, you can also visit the 
                                 <a href="https://www.combank.lk/rates-tariff#exchange-rates" target="_blank">
                                     Commercial Bank website
-                                </a>
+                                </a>.
                             </p>
                             <p style="margin-top: 20px; margin-bottom: 20px;">
-                                Visit <a href="https://keeprates-770e5.web.app/" target="_blank">
+                                Visit <a href="https://keeprates.kanushka.com/" target="_blank">
                                     KeepRates
                                 </a> for more detailed analysis.
                             </p>
