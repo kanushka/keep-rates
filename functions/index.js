@@ -114,7 +114,10 @@ async function getDailyRates(date) {
 }
 
 // send rates email
-async function sendRatesEmail() {
+async function sendRatesEmail(emails = [{
+    Email: "kanushkanet@gmail.com",
+    Name: "Kanushka"
+}]) {
     try {
         const rates = await getLast14DaysRates();
 
@@ -175,24 +178,7 @@ async function sendRatesEmail() {
                     Email: "kanushkanet@gmail.com",
                     Name: "KeepRates"
                 },
-                To: [
-                    {
-                        Email: "kanushkanet@gmail.com",
-                        Name: "Kanushka"
-                    },
-                    {
-                        Email: "tharukavishwajiths@gmail.com",
-                        Name: "Tharuka"
-                    },
-                    {
-                        Email: "thisa030@gmail.com",
-                        Name: "Thisara"
-                    },
-                    // {
-                    //     Email: "kanushka@mailinator.com",
-                    //     Name: "Kanushka"
-                    // }
-                ],
+                To: emails,
                 Subject: `USD Rate Update: ${latestRate} LKR ${trends[0]?.trend || ''}`,
                 HTMLPart: htmlContent
             }]
@@ -229,7 +215,16 @@ exports.scheduleUsdRateUpdate = onSchedule(
 
             // only send email if today's rate is different from yesterday's max rate
             if (usdRate !== yesterdayMaxRate) {
-                await sendRatesEmail();
+                await sendRatesEmail([{
+                    Email: "kanushkanet@gmail.com",
+                    Name: "Kanushka"
+                }, {
+                    Email: "tharukavishwajiths@gmail.com",
+                    Name: "Tharuka"
+                }, {
+                    Email: "thisa030@gmail.com",
+                    Name: "Thisara"
+                }]);
                 logger.info("Email sent due to rate change");
             } else {
                 logger.info("No rate change detected, skipping email");
@@ -259,7 +254,10 @@ exports.fetchAndSaveUsdRate = onRequest(async (req, res) => {
 // post request to send rates emails
 exports.sendRatesEmailManually = onRequest(async (req, res) => {
     try {
-        await sendRatesEmail();
+        await sendRatesEmail([{
+            Email: "kanushkanet@gmail.com",
+            Name: "Kanushka"
+        }]);
         return res.status(200).json({ message: "Email sent successfully" });
     } catch (error) {
         logger.error("Error in send rates email:", error.message);
