@@ -17,7 +17,7 @@ const createEmailTemplate = ({
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     </head>
-    <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: 'Poppins', Arial, sans-serif; color: #0066cc">
+    <body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: 'Poppins', Arial, sans-serif; color: #111827">
         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto;">
             <!-- Header Section -->
             <tr>
@@ -88,11 +88,16 @@ const createEmailTemplate = ({
                     <!-- Footer -->
                     <div style="margin-top: 20px;">
                         <div style="margin-bottom: 10px;">
-                        <p style="margin-top: 20px; margin-bottom: 20px;">
-                            For current exchange rates, you can also visit the 
-                            <a href="https://www.combank.lk/rates-tariff#exchange-rates" target="_blank">
-                                Commercial Bank website
-                            </a>
+                            <p style="margin-top: 20px; margin-bottom: 4px;">
+                                For current exchange rates, you can also visit the 
+                                <a href="https://www.combank.lk/rates-tariff#exchange-rates" target="_blank">
+                                    Commercial Bank website
+                                </a>
+                            </p>
+                            <p style="margin-top: 20px; margin-bottom: 20px;">
+                                Visit <a href="https://keeprates-770e5.web.app/" target="_blank">
+                                    KeepRates
+                                </a> for more detailed analysis.
                             </p>
                         </div>
                     </div>
