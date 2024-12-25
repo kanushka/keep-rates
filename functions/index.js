@@ -7,29 +7,29 @@ const logger = require("firebase-functions/logger");
 const Mailjet = require('node-mailjet');
 require('dotenv').config();
 
-// Initialize Firebase Admin SDK
+// initialize firebase admin sdk
 initializeApp();
 const db = getFirestore();
 
-// Use firebase config if local env is not setup
+// initialize mailjet
 // firebase functions:config:set mailjet.api_key="your_api_key" mailjet.secret_key="your_secret_key"
 const mailjet = new Mailjet({
     apiKey: process.env.MAILJET_API_KEY || process.env.FIREBASE_CONFIG.mailjet.api_key,
     apiSecret: process.env.MAILJET_SECRET_KEY || process.env.FIREBASE_CONFIG.mailjet.secret_key
 });
 
-// Function to fetch USD rate
+// fetch usd rate
 async function fetchUsdRate() {
     try {
         const response = await axios.get("https://www.combank.lk/rates-tariff#exchange-rates");
         const html = response.data;
 
-        // Updated regex to capture the fifth numeric value in the row
+        // updated regex to capture the fifth numeric value in the row
         const regex = /US DOLLARS[\s\S]*?text-align:right">\s*[\d.]+\s*<\/td>[\s\S]*?text-align:right">\s*[\d.]+\s*<\/td>[\s\S]*?text-align:right">\s*[\d.]+\s*<\/td>[\s\S]*?text-align:right">\s*[\d.]+\s*<\/td>[\s\S]*?text-align:right">\s*([\d.]+)\s*</;
         const match = html.match(regex);
 
         if (match && match[1]) {
-            return parseFloat(match[1]); // Return the fifth rate value
+            return parseFloat(match[1]); // return the fifth rate value
         }
         throw new Error("USD rate not found");
     } catch (error) {
@@ -38,7 +38,7 @@ async function fetchUsdRate() {
     }
 }
 
-// Separate function for saving USD rate to database
+// save usd rate to database
 async function saveUsdRateToDb(usdRate) {
     const now = new Date();
     const timestamp = now.toISOString();
@@ -62,7 +62,7 @@ async function saveUsdRateToDb(usdRate) {
     }
 }
 
-// Update function name and duration
+// get last 14 days rates
 async function getLast14DaysRates() {
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
@@ -73,19 +73,56 @@ async function getLast14DaysRates() {
             .orderBy("timestamp", "desc")
             .get();
 
-        return snapshot.docs.map(doc => doc.data());
+        // group rates by date and get max rate for each day
+        const ratesByDate = snapshot.docs.reduce((acc, doc) => {
+            const data = doc.data();
+            if (!acc[data.date] || acc[data.date].rate < data.rate) {
+                acc[data.date] = data;
+            }
+            return acc;
+        }, {});
+
+        // convert to array and sort by date descending
+        return Object.values(ratesByDate).sort((a, b) =>
+            new Date(b.timestamp) - new Date(a.timestamp)
+        );
     } catch (error) {
         logger.error("Error fetching last 14 days rates:", error.message);
         throw error;
     }
 }
 
-// Add new function to send email
+// get all rates for a specific date
+async function getDailyRates(date) {
+    try {
+        const startOfDay = new Date(date);
+        const endOfDay = new Date(date);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+
+        const snapshot = await db.collection("usdRates")
+            .where("timestamp", ">=", startOfDay.toISOString())
+            .where("timestamp", "<", endOfDay.toISOString())
+            .orderBy("timestamp", "desc")
+            .get();
+
+        return snapshot.docs.map(doc => doc.data());
+    } catch (error) {
+        logger.error("Error fetching daily rates:", error.message);
+        throw error;
+    }
+}
+
+// send rates email
 async function sendRatesEmail() {
     try {
         const rates = await getLast14DaysRates();
 
-        // Calculate trends and statistics
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const yesterdayRates = await getDailyRates(yesterdayStr);
+
+        // calculate trends and statistics
         const trends = rates.reduce((acc, rate, index) => {
             if (index === rates.length - 1) return acc;
 
@@ -104,7 +141,7 @@ async function sendRatesEmail() {
             return acc;
         }, []);
 
-        // Calculate overall statistics
+        // calculate overall statistics
         const latestRate = rates[0].rate;
         const oldestRate = rates[rates.length - 1].rate;
         const overallChange = (latestRate - oldestRate).toFixed(2);
@@ -112,7 +149,7 @@ async function sendRatesEmail() {
         const highestRate = Math.max(...rates.map(r => r.rate));
         const lowestRate = Math.min(...rates.map(r => r.rate));
 
-        // Calculate weekly statistics
+        // calculate weekly statistics
         const lastWeekRates = rates.slice(0, 7);
         const previousWeekRates = rates.slice(7, 14);
         const lastWeekAvg = (lastWeekRates.reduce((sum, r) => sum + r.rate, 0) / lastWeekRates.length).toFixed(2);
@@ -120,7 +157,7 @@ async function sendRatesEmail() {
         const weekOverWeekChange = (lastWeekAvg - previousWeekAvg).toFixed(2);
         const weekOverWeekPercentage = ((weekOverWeekChange / previousWeekAvg) * 100).toFixed(2);
 
-        // Determine if it's a good time to convert
+        // determine if it's a good time to convert
         const isHighestInPeriod = latestRate === highestRate;
         const isLowestInPeriod = latestRate === lowestRate;
         const rateAdvice = isHighestInPeriod ?
@@ -128,6 +165,41 @@ async function sendRatesEmail() {
             isLowestInPeriod ?
                 "Current rate is the lowest in the last 14 days - could be a good time to convert" :
                 "Current rate is within the normal range";
+
+        // add daily rate variations table to HTML
+        const dailyRatesTable = `
+            <h3>Yesterday's Rate Variations</h3>
+            <table border="1" style="border-collapse: collapse; width: 100%;">
+                <tr style="background-color: #f2f2f2;">
+                    <th style="padding: 8px;">Time</th>
+                    <th style="padding: 8px;">Rate (LKR)</th>
+                    <th style="padding: 8px;">Difference</th>
+                </tr>
+                ${yesterdayRates.map((rate, index) => {
+            const diff = index < yesterdayRates.length - 1
+                ? (rate.rate - yesterdayRates[index + 1].rate).toFixed(2)
+                : '-';
+            return `
+                        <tr>
+                            <td style="padding: 8px;">${rate.time}</td>
+                            <td style="padding: 8px;">${rate.rate}</td>
+                            <td style="padding: 8px; color: ${diff > 0 ? '#008000' : diff < 0 ? '#FF0000' : '#000000'
+                };">${diff}</td>
+                        </tr>
+                    `;
+        }).join('')}
+            </table>
+        `;
+
+        // add link to ComBank rates page
+        const ratesLink = `
+            <p style="margin-top: 20px; margin-bottom: 20px;">
+                For current exchange rates, you can also visit the Commercial Bank website:
+                <a href="https://www.combank.lk/rates-tariff#exchange-rates" target="_blank">
+                    Check Latest Exchange Rates
+                </a>
+            </p>
+        `;
 
         const htmlContent = `
             <h2>USD Exchange Rates Analysis - Last 14 Days</h2>
@@ -179,16 +251,8 @@ async function sendRatesEmail() {
                 `).join('')}
             </table>
             
-            <h3>Analysis Summary</h3>
-            <p>
-                Over the last 14 days, the USD/LKR rate has ${overallChange > 0 ? 'increased' : 'decreased'} 
-                by ${Math.abs(overallChange)} LKR (${Math.abs(overallPercentage)}%).
-                ${Math.abs(overallPercentage) > 1
-                ? `This represents a significant ${overallChange > 0 ? 'upward' : 'downward'} trend.`
-                : 'The rate has remained relatively stable.'
-            }
-            </p>
-            
+            ${dailyRatesTable}
+            ${ratesLink}
         `;
 
         const request = await mailjet.post("send", { version: 'v3.1' }).request({
@@ -198,24 +262,27 @@ async function sendRatesEmail() {
                     Name: "KeepRates"
                 },
                 To: [
+                    // {
+                    //     Email: "kanushkanet@gmail.com",
+                    //     Name: "Kanushka"
+                    // },
+                    // {
+                    //     Email: "tharukavishwajiths@gmail.com",
+                    //     Name: "Tharuka"
+                    // },
+                    // {
+                    //     Email: "thisa030@gmail.com",
+                    //     Name: "Thisara"
+                    // },
                     {
-                        Email: "kanushkanet@gmail.com",
+                        Email: "kanushka@mailinator.com",
                         Name: "Kanushka"
-                    },
-                    {
-                        Email: "tharukavishwajiths@gmail.com",
-                        Name: "Tharuka"
-                    },
-                    {
-                        Email: "thisa030@gmail.com",
-                        Name: "Thisara"
                     }
                 ],
                 Subject: `USD Rate Update: ${latestRate} LKR ${trends[0]?.trend || ''}`,
                 HTMLPart: htmlContent
             }]
         });
-
         logger.info("Email sent successfully");
         return request;
     } catch (error) {
@@ -236,7 +303,23 @@ exports.scheduleUsdRateUpdate = onSchedule(
 
         try {
             await saveUsdRateToDb(usdRate);
-            sendRatesEmail();
+
+            // get yesterday's date
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+            // get yesterday's rates
+            const yesterdayRates = await getDailyRates(yesterdayStr);
+            const yesterdayMaxRate = Math.max(...yesterdayRates.map(r => r.rate));
+
+            // only send email if today's rate is different from yesterday's max rate
+            if (usdRate !== yesterdayMaxRate) {
+                await sendRatesEmail();
+                logger.info("Email sent due to rate change");
+            } else {
+                logger.info("No rate change detected, skipping email");
+            }
         } catch (error) {
             logger.error("Error in scheduled function:", error.message);
         }
