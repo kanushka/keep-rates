@@ -176,22 +176,22 @@ async function sendRatesEmail() {
                     Name: "KeepRates"
                 },
                 To: [
-                    // {
-                    //     Email: "kanushkanet@gmail.com",
-                    //     Name: "Kanushka"
-                    // },
-                    // {
-                    //     Email: "tharukavishwajiths@gmail.com",
-                    //     Name: "Tharuka"
-                    // },
-                    // {
-                    //     Email: "thisa030@gmail.com",
-                    //     Name: "Thisara"
-                    // },
                     {
-                        Email: "kanushka@mailinator.com",
+                        Email: "kanushkanet@gmail.com",
                         Name: "Kanushka"
-                    }
+                    },
+                    {
+                        Email: "tharukavishwajiths@gmail.com",
+                        Name: "Tharuka"
+                    },
+                    {
+                        Email: "thisa030@gmail.com",
+                        Name: "Thisara"
+                    },
+                    // {
+                    //     Email: "kanushka@mailinator.com",
+                    //     Name: "Kanushka"
+                    // }
                 ],
                 Subject: `USD Rate Update: ${latestRate} LKR ${trends[0]?.trend || ''}`,
                 HTMLPart: htmlContent
