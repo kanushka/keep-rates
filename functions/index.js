@@ -224,8 +224,8 @@ async function sendRatesEmail() {
     }
 }
 
-// Modify saveUsdRate function
-exports.saveUsdRate = onSchedule(
+// schedule to save usd rate and send email
+exports.scheduleUsdRateUpdate = onSchedule(
     { schedule: "0 8 * * *", timeZone: "Asia/Colombo" },
     async (event) => {
         const usdRate = await fetchUsdRate();
@@ -243,8 +243,8 @@ exports.saveUsdRate = onSchedule(
     }
 );
 
-// Trigger save usd rate
-exports.triggerSaveUsdRate = onRequest(async (req, res) => {
+// post request to save usd rate
+exports.saveUsdRate = onRequest(async (req, res) => {
     try {
         const usdRate = await fetchUsdRate();
         if (!usdRate) {
@@ -259,8 +259,8 @@ exports.triggerSaveUsdRate = onRequest(async (req, res) => {
     }
 });
 
-// Trigger send rates email
-exports.triggerSendRatesEmail = onRequest(async (req, res) => {
+// post request to send rates emails
+exports.sendRatesEmailManually = onRequest(async (req, res) => {
     try {
         await sendRatesEmail();
         return res.status(200).json({ message: "Email sent successfully" });
