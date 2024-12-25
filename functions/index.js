@@ -5,6 +5,7 @@ const { getFirestore } = require("firebase-admin/firestore");
 const axios = require("axios");
 const logger = require("firebase-functions/logger");
 const Mailjet = require('node-mailjet');
+const { createEmailTemplate, formatCurrency, formatPercentage } = require('./emailTemplate');
 require('dotenv').config();
 
 // initialize firebase admin sdk
@@ -117,11 +118,6 @@ async function sendRatesEmail() {
     try {
         const rates = await getLast14DaysRates();
 
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-        const yesterdayRates = await getDailyRates(yesterdayStr);
-
         // calculate trends and statistics
         const trends = rates.reduce((acc, rate, index) => {
             if (index === rates.length - 1) return acc;
@@ -148,14 +144,7 @@ async function sendRatesEmail() {
         const overallPercentage = ((overallChange / oldestRate) * 100).toFixed(2);
         const highestRate = Math.max(...rates.map(r => r.rate));
         const lowestRate = Math.min(...rates.map(r => r.rate));
-
-        // calculate weekly statistics
-        const lastWeekRates = rates.slice(0, 7);
-        const previousWeekRates = rates.slice(7, 14);
-        const lastWeekAvg = (lastWeekRates.reduce((sum, r) => sum + r.rate, 0) / lastWeekRates.length).toFixed(2);
-        const previousWeekAvg = (previousWeekRates.reduce((sum, r) => sum + r.rate, 0) / previousWeekRates.length).toFixed(2);
-        const weekOverWeekChange = (lastWeekAvg - previousWeekAvg).toFixed(2);
-        const weekOverWeekPercentage = ((weekOverWeekChange / previousWeekAvg) * 100).toFixed(2);
+        const rateVolatility = (highestRate - lowestRate).toFixed(2);
 
         // determine if it's a good time to convert
         const isHighestInPeriod = latestRate === highestRate;
@@ -166,94 +155,19 @@ async function sendRatesEmail() {
                 "Current rate is the lowest in the last 14 days - could be a good time to convert" :
                 "Current rate is within the normal range";
 
-        // add daily rate variations table to HTML
-        const dailyRatesTable = `
-            <h3>Yesterday's Rate Variations</h3>
-            <table border="1" style="border-collapse: collapse; width: 100%;">
-                <tr style="background-color: #f2f2f2;">
-                    <th style="padding: 8px;">Time</th>
-                    <th style="padding: 8px;">Rate (LKR)</th>
-                    <th style="padding: 8px;">Difference</th>
-                </tr>
-                ${yesterdayRates.map((rate, index) => {
-            const diff = index < yesterdayRates.length - 1
-                ? (rate.rate - yesterdayRates[index + 1].rate).toFixed(2)
-                : '-';
-            return `
-                        <tr>
-                            <td style="padding: 8px;">${rate.time}</td>
-                            <td style="padding: 8px;">${rate.rate}</td>
-                            <td style="padding: 8px; color: ${diff > 0 ? '#008000' : diff < 0 ? '#FF0000' : '#000000'
-                };">${diff}</td>
-                        </tr>
-                    `;
-        }).join('')}
-            </table>
-        `;
+        const emailData = {
+            latestRate: formatCurrency(latestRate),
+            rateAdvice,
+            overallChange: formatCurrency(overallChange),
+            overallPercentage: formatPercentage(overallPercentage),
+            highestRate: formatCurrency(highestRate),
+            lowestRate: formatCurrency(lowestRate),
+            rateVolatility: formatCurrency(rateVolatility),
+            rates,
+            trends
+        };
 
-        // add link to ComBank rates page
-        const ratesLink = `
-            <p style="margin-top: 20px; margin-bottom: 20px;">
-                For current exchange rates, you can also visit the Commercial Bank website:
-                <a href="https://www.combank.lk/rates-tariff#exchange-rates" target="_blank">
-                    Check Latest Exchange Rates
-                </a>
-            </p>
-        `;
-
-        const htmlContent = `
-            <h2>USD Exchange Rates Analysis - Last 14 Days</h2>
-            
-            <h3>Current Status</h3>
-            <p>Latest Rate: ${latestRate} LKR</p>
-            <p>${rateAdvice}</p>
-            
-            <h3>14-Day Overview</h3>
-            <ul>
-                <li>Overall Change: ${overallChange} LKR (${overallPercentage}%)</li>
-                <li>Highest Rate: ${highestRate} LKR</li>
-                <li>Lowest Rate: ${lowestRate} LKR</li>
-                <li>Rate Volatility: ${(highestRate - lowestRate).toFixed(2)} LKR</li>
-            </ul>
-
-            <h3>Week-over-Week Analysis</h3>
-            <ul>
-                <li>Last Week Average: ${lastWeekAvg} LKR</li>
-                <li>Previous Week Average: ${previousWeekAvg} LKR</li>
-                <li>Week-over-Week Change: ${weekOverWeekChange} LKR (${weekOverWeekPercentage}%)</li>
-            </ul>
-            
-            <h3>Daily Rates and Trends</h3>
-            <table border="1" style="border-collapse: collapse; width: 100%;">
-                <tr style="background-color: #f2f2f2;">
-                    <th style="padding: 8px;">Date</th>
-                    <th style="padding: 8px;">Time</th>
-                    <th style="padding: 8px;">Rate (LKR)</th>
-                    <th style="padding: 8px;">Daily Change</th>
-                    <th style="padding: 8px;">% Change</th>
-                    <th style="padding: 8px;">Trend</th>
-                </tr>
-                ${rates.map((rate, index) => `
-                    <tr${index === 7 ? ' style="border-top: 2px solid #000;"' : ''}>
-                        <td style="padding: 8px;">${rate.date}</td>
-                        <td style="padding: 8px;">${rate.time}</td>
-                        <td style="padding: 8px;">${rate.rate}</td>
-                        <td style="padding: 8px; color: ${trends[index]?.difference > 0 ? '#008000' :
-                trends[index]?.difference < 0 ? '#FF0000' :
-                    '#000000'
-            };">${trends[index]?.difference || '-'}</td>
-                        <td style="padding: 8px; color: ${trends[index]?.difference > 0 ? '#008000' :
-                trends[index]?.difference < 0 ? '#FF0000' :
-                    '#000000'
-            };">${trends[index]?.percentageChange || '-'}%</td>
-                        <td style="padding: 8px;">${trends[index]?.trend || '-'}</td>
-                    </tr>
-                `).join('')}
-            </table>
-            
-            ${dailyRatesTable}
-            ${ratesLink}
-        `;
+        const htmlContent = createEmailTemplate(emailData);
 
         const request = await mailjet.post("send", { version: 'v3.1' }).request({
             Messages: [{
