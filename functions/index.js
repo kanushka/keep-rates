@@ -241,7 +241,7 @@ exports.scheduleUsdRateUpdate = onSchedule(
 );
 
 // post request to save usd rate
-exports.saveUsdRate = onRequest(async (req, res) => {
+exports.fetchAndSaveUsdRate = onRequest(async (req, res) => {
     try {
         const usdRate = await fetchUsdRate();
         if (!usdRate) {
