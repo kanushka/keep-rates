@@ -1,23 +1,3 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-// const { onRequest } = require("firebase-functions/v2/https");
-// const logger = require("firebase-functions/logger");
-
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
-
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
-
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onRequest } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
@@ -25,18 +5,17 @@ const { getFirestore } = require("firebase-admin/firestore");
 const axios = require("axios");
 const logger = require("firebase-functions/logger");
 const Mailjet = require('node-mailjet');
+require('dotenv').config();
 
 // Initialize Firebase Admin SDK
 initializeApp();
 const db = getFirestore();
 
-// Add these constants at the top with other initializations
-const MAILJET_API_KEY = '2a3034e24961515abbc18b1a24c86cae';
-const MAILJET_SECRET_KEY = '65006d2a022907192f9f93b1fdd730b3';
-
+// Use firebase config if local env is not setup
+// firebase functions:config:set mailjet.api_key="your_api_key" mailjet.secret_key="your_secret_key"
 const mailjet = new Mailjet({
-    apiKey: MAILJET_API_KEY,
-    apiSecret: MAILJET_SECRET_KEY
+    apiKey: process.env.MAILJET_API_KEY || process.env.FIREBASE_CONFIG.mailjet.api_key,
+    apiSecret: process.env.MAILJET_SECRET_KEY || process.env.FIREBASE_CONFIG.mailjet.secret_key
 });
 
 // Function to fetch USD rate
