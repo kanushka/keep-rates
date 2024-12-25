@@ -175,7 +175,7 @@ async function sendRatesEmail(emails = [{
         const request = await mailjet.post("send", { version: 'v3.1' }).request({
             Messages: [{
                 From: {
-                    Email: "keeprates@kanushka.com",
+                    Email: "noreply@kanushka.com",
                     Name: "Keep Rates"
                 },
                 To: emails,
