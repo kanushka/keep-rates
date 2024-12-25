@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "next build && cd .. && firebase deploy --only hosting"
   },
   "dependencies": {
     "@sgratzl/chartjs-chart-boxplot": "^4.4.4",

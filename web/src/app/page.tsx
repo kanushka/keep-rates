@@ -178,6 +178,7 @@ export default function Home() {
           },
           tooltip: {
             callbacks: {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               label: (context: any) => {
                 const stats = dailyVolatility[context.dataIndex];
                 return [
