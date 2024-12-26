@@ -15,7 +15,6 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { format, subDays } from 'date-fns';
-import { BoxPlotController, BoxAndWiskers } from '@sgratzl/chartjs-chart-boxplot';
 
 
 
@@ -25,8 +24,6 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
-  BoxPlotController,
-  BoxAndWiskers,
   Title,
   Tooltip,
   Legend
@@ -50,50 +47,10 @@ interface DailyStats {
 }
 
 export default function Home() {
+  const [allRates, setAllRates] = useState<Rate[]>([]);
   const [rates, setRates] = useState<Rate[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('14d');
-  const [dailyVolatility, setDailyVolatility] = useState<DailyStats[]>([]);
-  const boxplotRef = useRef<HTMLCanvasElement>(null);
-  const chartInstance = useRef<ChartJS | null>(null);
-
-  const calculateDailyStats = (rates: Rate[]): DailyStats[] => {
-    // Group rates by date
-    const ratesByDate = rates.reduce((acc, rate) => {
-      if (!acc[rate.date]) {
-        acc[rate.date] = [];
-      }
-      acc[rate.date].push(rate.rate);
-      return acc;
-    }, {} as Record<string, number[]>);
-
-    // Calculate statistics for each day
-    return Object.entries(ratesByDate).map(([date, rates]) => {
-      const sortedRates = rates.sort((a, b) => a - b);
-      
-      // Calculate quartiles
-      const getQuartile = (arr: number[], q: number) => {
-        const pos = (arr.length - 1) * q;
-        const base = Math.floor(pos);
-        const rest = pos - base;
-        if (arr[base + 1] !== undefined) {
-          return arr[base] + rest * (arr[base + 1] - arr[base]);
-        } else {
-          return arr[base];
-        }
-      };
-
-      return {
-        date,
-        min: Math.min(...rates),
-        q1: getQuartile(sortedRates, 0.25),
-        median: getQuartile(sortedRates, 0.5),
-        q3: getQuartile(sortedRates, 0.75),
-        max: Math.max(...rates),
-        rates: sortedRates
-      };
-    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  };
 
   const fetchRates = async (days: number) => {
     const startDate = subDays(new Date(), days);
@@ -106,10 +63,6 @@ export default function Home() {
 
     const snapshot = await getDocs(q);
     const allRates = snapshot.docs.map(doc => doc.data() as Rate);
-    
-    // Calculate daily stats for volatility chart
-    const dailyStats = calculateDailyStats(allRates);
-    setDailyVolatility(dailyStats);
 
     // Continue with existing logic for daily max rates
     const ratesByDate: Record<string, Rate> = {};
@@ -119,9 +72,14 @@ export default function Home() {
       }
     });
 
-    return Object.values(ratesByDate).sort((a, b) => 
+    const maxRates = Object.values(ratesByDate).sort((a, b) => 
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
+    setRates(maxRates);
+
+    // get all rates in last 7 days
+    const allRatesInLast3Days = allRates.filter(rate => new Date(rate.date) >= subDays(new Date(), 7)).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    setAllRates(allRatesInLast3Days);
   };
 
   useEffect(() => {
@@ -131,8 +89,7 @@ export default function Home() {
         const days = dateRange === '14d' ? 14 : 
                     dateRange === '30d' ? 30 : 
                     dateRange === '60d' ? 60 : 365;
-        const data = await fetchRates(days);
-        setRates(data);
+        await fetchRates(days);
       } catch (error) {
         console.error('Error fetching rates:', error);
       } finally {
@@ -143,65 +100,6 @@ export default function Home() {
     loadRates();
   }, [dateRange]);
 
-  useEffect(() => {
-    if (!boxplotRef.current || !dailyVolatility.length) return;
-
-    // Destroy existing chart
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
-
-    // Create new chart
-    chartInstance.current = new ChartJS(boxplotRef.current, {
-      type: 'boxplot',
-      data: {
-        labels: dailyVolatility.map(d => format(new Date(d.date), 'MMM dd')),
-        datasets: [{
-          label: 'Daily Rate Range',
-          backgroundColor: 'rgba(59, 130, 246, 0.5)',
-          borderColor: 'rgb(59, 130, 246)',
-          data: dailyVolatility.map(d => ({
-            min: d.min,
-            q1: d.q1,
-            median: d.median,
-            q3: d.q3,
-            max: d.max
-          }))
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: 'Daily Rate Ranges'
-          },
-          tooltip: {
-            callbacks: {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              label: (context: any) => {
-                const stats = dailyVolatility[context.dataIndex];
-                return [
-                  `Highest: ${stats.max.toFixed(2)} LKR`,
-                  `Upper Quartile: ${stats.q3.toFixed(2)} LKR`,
-                  `Median: ${stats.median.toFixed(2)} LKR`,
-                  `Lower Quartile: ${stats.q1.toFixed(2)} LKR`,
-                  `Lowest: ${stats.min.toFixed(2)} LKR`,
-                  `Number of updates: ${stats.rates.length}`
-                ];
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
-      }
-    };
-  }, [dailyVolatility]);
 
   if (loading) {
     return (
@@ -219,12 +117,25 @@ export default function Home() {
   const lowestRate = Math.min(...rates.map(r => r.rate));
   const rateVolatility = (highestRate - lowestRate).toFixed(2);
 
-  const chartData = {
+  const maxRateChartData = {
     labels: rates.map(r => format(new Date(r.date), 'MMM dd')),
     datasets: [
       {
         label: 'USD Rate (LKR)',
         data: rates.map(r => r.rate),
+        borderColor: 'rgb(59, 130, 246)',
+        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        tension: 0.1,
+      },
+    ],
+  };
+
+  const allRatesChartData = {
+    labels: allRates.map(r => format(new Date(r.timestamp), 'MMM dd - HH:mm')),
+    datasets: [
+      {
+        label: 'USD Rate (LKR)',
+        data: allRates.map(r => r.rate),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.5)',
         tension: 0.1,
@@ -285,10 +196,10 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Chart */}
-      <div className="bg-white rounded-lg shadow p-4">
+      {/* Charts */}
+      <div className="bg-white rounded-lg shadow p-4 mb-8">
         <Line
-          data={chartData}
+          data={maxRateChartData}
           options={{
             responsive: true,
             plugins: {
@@ -297,7 +208,7 @@ export default function Home() {
               },
               title: {
                 display: true,
-                text: 'USD to LKR Exchange Rate Trend',
+                text: 'Maximum Exchange Rate Per Day',
               },
             },
             scales: {
@@ -309,9 +220,30 @@ export default function Home() {
         />
       </div>
 
-      <div className="bg-white rounded-lg shadow p-4 mt-8">
-        <canvas ref={boxplotRef}></canvas>
+      <div className="bg-white rounded-lg shadow p-4">
+        <Line
+          data={allRatesChartData}
+          options={{
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'top' as const,
+              },
+              title: {
+                display: true,
+                text: 'All Rates in last 3 days',
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: false,
+              },
+            },
+          }}
+        />
       </div>
+
+
     </main>
   );
 }
