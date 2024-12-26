@@ -204,31 +204,18 @@ exports.scheduleUsdRateUpdate = onSchedule(
         try {
             await saveUsdRateToDb(usdRate);
 
-            // get yesterday's date
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            await sendRatesEmail([{
+                Email: "kanushkanet@gmail.com",
+                Name: "Kanushka"
+            }, {
+                Email: "tharukavishwajiths@gmail.com",
+                Name: "Tharuka"
+            }, {
+                Email: "thisa030@gmail.com",
+                Name: "Thisara"
+            }]);
+            logger.info("Email sent due to rate change");
 
-            // get yesterday's rates
-            const yesterdayRates = await getDailyRates(yesterdayStr);
-            const yesterdayMaxRate = Math.max(...yesterdayRates.map(r => r.rate));
-
-            // only send email if today's rate is different from yesterday's max rate
-            if (usdRate !== yesterdayMaxRate) {
-                await sendRatesEmail([{
-                    Email: "kanushkanet@gmail.com",
-                    Name: "Kanushka"
-                }, {
-                    Email: "tharukavishwajiths@gmail.com",
-                    Name: "Tharuka"
-                }, {
-                    Email: "thisa030@gmail.com",
-                    Name: "Thisara"
-                }]);
-                logger.info("Email sent due to rate change");
-            } else {
-                logger.info("No rate change detected, skipping email");
-            }
         } catch (error) {
             logger.error("Error in scheduled function:", error.message);
         }
