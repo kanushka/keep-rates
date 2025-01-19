@@ -28,6 +28,7 @@ import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Rate } from "@/types";
+import Loading from "./loading";
 
 export default function Page() {
   const [rates, setRates] = useState<Rate[]>([]);
@@ -100,11 +101,7 @@ export default function Page() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className=""> Loading...</div>
-      </div>
-    );
+    return <Loading />;
   }
 
   const filteredRates = rates.filter((item) => {
