@@ -29,9 +29,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Rate } from "@/types";
 import Loading from "./loading";
+import { RecentTimeChart } from "@/components/recent-time-chart";
 
 export default function Page() {
   const [rates, setRates] = useState<Rate[]>([]);
+  const [allRates, setAllRates] = useState<Rate[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("30d");
 
@@ -46,7 +48,7 @@ export default function Page() {
 
     const snapshot = await getDocs(q);
     const allRates = snapshot.docs.map((doc) => doc.data() as Rate);
-
+    setAllRates(allRates);
     // Continue with existing logic for daily max rates
     const ratesByDate: Record<string, Rate> = {};
     allRates.forEach((rate) => {
@@ -248,6 +250,9 @@ export default function Page() {
                 chartData={rates}
                 onTimeRangeChange={setDateRange}
               />
+            </div>
+            <div className="col-span-full rounded-xl bg-muted/50">
+              <RecentTimeChart chartData={allRates} />
             </div>
           </div>
           <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />

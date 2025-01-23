@@ -18,6 +18,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Rate } from "@/types";
 import {
   Select,
   SelectContent,
@@ -25,7 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Rate } from "@/types";
+
+interface DotProps {
+  cx: number;
+  cy: number;
+  payload: {
+    timestamp: string;
+  };
+}
 
 const chartConfig = {
   rate: {
@@ -34,42 +42,39 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-interface SummaryChartProps {
+interface RecentTimeChartProps {
   chartData: Rate[];
-  onTimeRangeChange: (range: string) => void;
 }
 
-export function SummaryChart({
+export function RecentTimeChart({
   chartData,
-  onTimeRangeChange,
-}: SummaryChartProps) {
-  const [timeRange, setTimeRange] = React.useState("30d");
+}: RecentTimeChartProps) {
+  const [timeRange, setTimeRange] = React.useState("3d");
 
   const getTimeRangeText = (range: string) => {
     switch (range) {
-      case "7d":
-        return "7 days";
       case "30d":
         return "30 days";
+      case "7d":
+        return "7 days";
       default:
-        return "3 months";
+        return "3 days";
     }
   };
 
   const handleTimeRangeChange = (range: string) => {
     setTimeRange(range);
-    onTimeRangeChange(range);
   };
 
   const filteredData = chartData.filter((item) => {
-    const date = new Date(item.date);
-    let daysToSubtract = 90;
+    const date = new Date(item.timestamp);
+    const startDate = new Date();
+    let daysToSubtract = 3;
     if (timeRange === "30d") {
       daysToSubtract = 30;
     } else if (timeRange === "7d") {
       daysToSubtract = 7;
     }
-    const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysToSubtract);
     return date >= startDate;
   });
@@ -79,32 +84,40 @@ export function SummaryChart({
   const padding = (maxRate - minRate) * 0.1;
   const yAxisDomain = [minRate - padding, maxRate + padding];
 
+  // reverse data to show newest first
+  const reversedData = [...filteredData].reverse();
+
+  // Function to check if timestamp is at midnight (00:00)
+  const isMidnight = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.getHours() === 0;
+  };
+
   return (
     <Card>
       <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
         <div className="grid flex-1 gap-1 text-center sm:text-left">
-          <CardTitle>Exchange Rates Per Day</CardTitle>
+          <CardTitle>Exchange Rates Over Time</CardTitle>
           <CardDescription>
-            Showing maximum rates per day for the last{" "}
-            {getTimeRangeText(timeRange)}
+            Showing all rate changes in the last {getTimeRangeText(timeRange)}
           </CardDescription>
         </div>
         <Select value={timeRange} onValueChange={handleTimeRangeChange}>
           <SelectTrigger
             className="w-[160px] rounded-lg sm:ml-auto"
-            aria-label="Select a value"
+            aria-label="Select time range"
           >
-            <SelectValue placeholder="Last 3 months" />
+            <SelectValue placeholder="Last 3 days" />
           </SelectTrigger>
           <SelectContent className="rounded-xl">
-            <SelectItem value="90d" className="rounded-lg">
-              Last 3 months
-            </SelectItem>
             <SelectItem value="30d" className="rounded-lg">
               Last 30 days
             </SelectItem>
             <SelectItem value="7d" className="rounded-lg">
               Last 7 days
+            </SelectItem>
+            <SelectItem value="3d" className="rounded-lg">
+              Last 3 days
             </SelectItem>
           </SelectContent>
         </Select>
@@ -115,7 +128,7 @@ export function SummaryChart({
           className="aspect-auto h-[250px] w-full"
         >
           <AreaChart
-            data={filteredData}
+            data={reversedData}
             margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
           >
             <defs>
@@ -145,16 +158,18 @@ export function SummaryChart({
               }}
             />
             <XAxis
-              dataKey="date"
+              dataKey="timestamp"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
               minTickGap={32}
               tickFormatter={(value) => {
                 const date = new Date(value);
-                return date.toLocaleDateString("en-US", {
+                return date.toLocaleString("en-US", {
                   month: "short",
                   day: "numeric",
+                  hour: "numeric",
+                  minute: "numeric",
                 });
               }}
             />
@@ -163,9 +178,12 @@ export function SummaryChart({
               content={
                 <ChartTooltipContent
                   labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString("en-US", {
+                    const date = new Date(value);
+                    return date.toLocaleString("en-US", {
                       month: "short",
                       day: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
                     });
                   }}
                   indicator="dot"
@@ -179,6 +197,30 @@ export function SummaryChart({
               stroke="hsl(var(--chart-1))"
               strokeWidth={1}
               baseLine={minRate}
+              dot={(props: DotProps) => {
+                const timestamp = props.payload.timestamp;
+                if (isMidnight(timestamp)) {
+                  return (
+                    <circle
+                      cx={props.cx}
+                      cy={props.cy}
+                      r={4}
+                      fill="hsl(var(--chart-1))"
+                      stroke="white"
+                      strokeWidth={2}
+                    />
+                  );
+                }
+                return (
+                  <circle
+                    cx={props.cx}
+                    cy={props.cy}
+                    r={0}
+                    fill="none"
+                    stroke="none"
+                  />
+                );
+              }}
             />
             <ChartLegend content={<ChartLegendContent />} />
           </AreaChart>
