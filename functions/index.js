@@ -213,7 +213,14 @@ exports.scheduleUsdRateUpdate = onSchedule(
             }, {
                 Email: "thisa030@gmail.com",
                 Name: "Thisara"
-            }]);
+            }, {
+                Email: "naveen.cooray.nc@gmail.com",
+                Name: "Naveen"
+            }, {
+                Email: "madushajg@gmail.com",
+                Name: "Madusha"
+            }
+        ]);
             logger.info("Email sent due to rate change");
 
         } catch (error) {
