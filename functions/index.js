@@ -94,24 +94,24 @@ async function getLast14DaysRates() {
 }
 
 // get all rates for a specific date
-async function getDailyRates(date) {
-    try {
-        const startOfDay = new Date(date);
-        const endOfDay = new Date(date);
-        endOfDay.setDate(endOfDay.getDate() + 1);
+// async function getDailyRates(date) {
+//     try {
+//         const startOfDay = new Date(date);
+//         const endOfDay = new Date(date);
+//         endOfDay.setDate(endOfDay.getDate() + 1);
 
-        const snapshot = await db.collection("usdRates")
-            .where("timestamp", ">=", startOfDay.toISOString())
-            .where("timestamp", "<", endOfDay.toISOString())
-            .orderBy("timestamp", "desc")
-            .get();
+//         const snapshot = await db.collection("usdRates")
+//             .where("timestamp", ">=", startOfDay.toISOString())
+//             .where("timestamp", "<", endOfDay.toISOString())
+//             .orderBy("timestamp", "desc")
+//             .get();
 
-        return snapshot.docs.map(doc => doc.data());
-    } catch (error) {
-        logger.error("Error fetching daily rates:", error.message);
-        throw error;
-    }
-}
+//         return snapshot.docs.map(doc => doc.data());
+//     } catch (error) {
+//         logger.error("Error fetching daily rates:", error.message);
+//         throw error;
+//     }
+// }
 
 // send rates email
 async function sendRatesEmail(emails = [{
@@ -193,7 +193,7 @@ async function sendRatesEmail(emails = [{
 
 // schedule to save usd rate and send email
 exports.scheduleUsdRateUpdate = onSchedule(
-    { schedule: "0 8 * * *", timeZone: "Asia/Colombo" },
+    { schedule: "0 10 * * *", timeZone: "Asia/Colombo" },
     async (event) => {
         const usdRate = await fetchUsdRate();
         if (!usdRate) {
