@@ -93,26 +93,6 @@ async function getLast14DaysRates() {
     }
 }
 
-// get all rates for a specific date
-// async function getDailyRates(date) {
-//     try {
-//         const startOfDay = new Date(date);
-//         const endOfDay = new Date(date);
-//         endOfDay.setDate(endOfDay.getDate() + 1);
-
-//         const snapshot = await db.collection("usdRates")
-//             .where("timestamp", ">=", startOfDay.toISOString())
-//             .where("timestamp", "<", endOfDay.toISOString())
-//             .orderBy("timestamp", "desc")
-//             .get();
-
-//         return snapshot.docs.map(doc => doc.data());
-//     } catch (error) {
-//         logger.error("Error fetching daily rates:", error.message);
-//         throw error;
-//     }
-// }
-
 // send rates email
 async function sendRatesEmail(emails = [{
     Email: "kanushkanet@gmail.com",
@@ -191,44 +171,6 @@ async function sendRatesEmail(emails = [{
     }
 }
 
-// schedule to save usd rate and send email
-exports.scheduleUsdRateUpdate = onSchedule(
-    { schedule: "0 10 * * *", timeZone: "Asia/Colombo" },
-    async (event) => {
-        const usdRate = await fetchUsdRate();
-        if (!usdRate) {
-            logger.warn("No USD rate fetched; skipping save.");
-            return;
-        }
-
-        try {
-            await saveUsdRateToDb(usdRate);
-
-            await sendRatesEmail([{
-                Email: "kanushkanet@gmail.com",
-                Name: "Kanushka"
-            }, {
-                Email: "tharukavishwajiths@gmail.com",
-                Name: "Tharuka"
-            }, {
-                Email: "thisa030@gmail.com",
-                Name: "Thisara"
-            }, {
-                Email: "naveen.cooray.nc@gmail.com",
-                Name: "Naveen"
-            }, {
-                Email: "madushajg@gmail.com",
-                Name: "Madusha"
-            }
-        ]);
-            logger.info("Email sent due to rate change");
-
-        } catch (error) {
-            logger.error("Error in scheduled function:", error.message);
-        }
-    }
-);
-
 // post request to save usd rate
 exports.fetchAndSaveUsdRate = onRequest(async (req, res) => {
     try {
@@ -251,7 +193,21 @@ exports.sendRatesEmailManually = onRequest(async (req, res) => {
         await sendRatesEmail([{
             Email: "kanushkanet@gmail.com",
             Name: "Kanushka"
-        }]);
+        },
+            // {
+            //     Email: "tharukavishwajiths@gmail.com",
+            //     Name: "Tharuka"
+            // }, {
+            //     Email: "thisa030@gmail.com",
+            //     Name: "Thisara"
+            // }, {
+            //     Email: "naveen.cooray.nc@gmail.com",
+            //     Name: "Naveen"
+            // }, {
+            //     Email: "madushajg@gmail.com",
+            //     Name: "Madusha"
+            // }
+        ]);
         return res.status(200).json({ message: "Email sent successfully" });
     } catch (error) {
         logger.error("Error in send rates email:", error.message);
