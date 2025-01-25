@@ -194,19 +194,19 @@ exports.sendRatesEmailManually = onRequest(async (req, res) => {
             Email: "kanushkanet@gmail.com",
             Name: "Kanushka"
         },
-            // {
-            //     Email: "tharukavishwajiths@gmail.com",
-            //     Name: "Tharuka"
-            // }, {
-            //     Email: "thisa030@gmail.com",
-            //     Name: "Thisara"
-            // }, {
-            //     Email: "naveen.cooray.nc@gmail.com",
-            //     Name: "Naveen"
-            // }, {
-            //     Email: "madushajg@gmail.com",
-            //     Name: "Madusha"
-            // }
+        {
+            Email: "tharukavishwajiths@gmail.com",
+            Name: "Tharuka"
+        }, {
+            Email: "thisa030@gmail.com",
+            Name: "Thisara"
+        }, {
+            Email: "naveen.cooray.nc@gmail.com",
+            Name: "Naveen"
+        }, {
+            Email: "madushajg@gmail.com",
+            Name: "Madusha"
+        }
         ]);
         return res.status(200).json({ message: "Email sent successfully" });
     } catch (error) {
