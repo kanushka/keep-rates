@@ -27,15 +27,35 @@ import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Rate } from "@/types";
+import { Rate, CBSLRate, CombinedRate } from "@/types";
 import Loading from "./loading";
 import { RecentTimeChart } from "@/components/recent-time-chart";
 
 export default function Page() {
-  const [rates, setRates] = useState<Rate[]>([]);
+  const [rates, setRates] = useState<CombinedRate[]>([]);
   const [allRates, setAllRates] = useState<Rate[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("30d");
+
+  const fetchCBSLRates = async (startDate: Date): Promise<CBSLRate[]> => {
+    try {
+      const ratesRef = collection(db, "cbslRates");
+      const q = query(
+        ratesRef,
+        where("timestamp", ">=", startDate.toISOString()),
+        orderBy("timestamp", "desc")
+      );
+      
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({
+        date: doc.data().date,
+        rate: doc.data().rate
+      }));
+    } catch (error) {
+      console.error('Error fetching CBSL rates:', error);
+      return [];
+    }
+  };
 
   const fetchRates = async (days: number) => {
     const startDate = subDays(new Date(), days);
@@ -46,10 +66,15 @@ export default function Page() {
       orderBy("timestamp", "desc")
     );
 
-    const snapshot = await getDocs(q);
+    const [snapshot, cbslRates] = await Promise.all([
+      getDocs(q),
+      fetchCBSLRates(startDate)
+    ]);
+
     const allRates = snapshot.docs.map((doc) => doc.data() as Rate);
     setAllRates(allRates);
-    // Continue with existing logic for daily max rates
+
+    // Process commercial bank rates
     const ratesByDate: Record<string, Rate> = {};
     allRates.forEach((rate) => {
       if (!ratesByDate[rate.date] || ratesByDate[rate.date].rate < rate.rate) {
@@ -57,9 +82,21 @@ export default function Page() {
       }
     });
 
-    const maxRates = Object.values(ratesByDate).sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    // Create a map of CBSL rates by date
+    const cbslRatesByDate = new Map(
+      cbslRates.map(rate => [rate.date, rate.rate])
     );
+
+    // Combine both rates
+    const maxRates = Object.values(ratesByDate)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map(rate => ({
+        date: rate.date,
+        rate: rate.rate,
+        cbslRate: cbslRatesByDate.get(rate.date),
+        timestamp: rate.timestamp
+      }));
+
     setRates(maxRates);
   };
 

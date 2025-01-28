@@ -25,17 +25,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Rate } from "@/types";
+import { CombinedRate } from "@/types";
 
 const chartConfig = {
   rate: {
-    label: "Rate",
+    label: "Commercial Bank Rate",
     color: "hsl(var(--chart-1))",
+  },
+  cbslRate: {
+    label: "Central Bank Rate",
+    color: "hsl(var(--chart-2))",
   },
 } satisfies ChartConfig;
 
 interface SummaryChartProps {
-  chartData: Rate[];
+  chartData: CombinedRate[];
   onTimeRangeChange: (range: string) => void;
 }
 
@@ -74,8 +78,17 @@ export function SummaryChart({
     return date >= startDate;
   });
 
-  const minRate = Math.min(...filteredData.map((item) => item.rate));
-  const maxRate = Math.max(...filteredData.map((item) => item.rate));
+  // Calculate min and max considering both commercial bank and CBSL rates
+  const allRates = filteredData.flatMap((item) => {
+    const rates = [item.rate];
+    if (item.cbslRate !== undefined) {
+      rates.push(item.cbslRate);
+    }
+    return rates;
+  });
+
+  const minRate = Math.min(...allRates);
+  const maxRate = Math.max(...allRates);
   const padding = (maxRate - minRate) * 0.1;
   const yAxisDomain = [minRate - padding, maxRate + padding];
 
@@ -131,6 +144,18 @@ export function SummaryChart({
                   stopOpacity={0.0}
                 />
               </linearGradient>
+              <linearGradient id="fillCBSLRate" x1="0" y1="0" x2="0" y2="1">
+                <stop
+                  offset="0%"
+                  stopColor="hsl(var(--chart-2))"
+                  stopOpacity={0.8}
+                />
+                <stop
+                  offset="80%"
+                  stopColor="hsl(var(--chart-2))"
+                  stopOpacity={0.0}
+                />
+              </linearGradient>
             </defs>
             <CartesianGrid vertical={false} />
             <YAxis
@@ -173,7 +198,18 @@ export function SummaryChart({
               }
             />
             <Area
+              dataKey="cbslRate"
+              name="CBSL Rate"
+              type="monotone"
+              fill="url(#fillCBSLRate)"
+              stroke="hsl(var(--chart-2))"
+              strokeWidth={1}
+              baseLine={minRate}
+              connectNulls={true}
+            />
+            <Area
               dataKey="rate"
+              name="Com Bank Rate"
               type="monotone"
               fill="url(#fillRate)"
               stroke="hsl(var(--chart-1))"
