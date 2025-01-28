@@ -49,8 +49,9 @@ export default function Page() {
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({
         date: doc.data().date,
-        rate: doc.data().rate
-      }));
+        rate: doc.data().rate,
+        timestamp: doc.data().timestamp
+      })) as CBSLRate[];
     } catch (error) {
       console.error('Error fetching CBSL rates:', error);
       return [];
@@ -137,7 +138,7 @@ export default function Page() {
     };
 
     loadRates();
-  }, []);
+  }, [fetchRates]);
 
   if (loading) {
     return <Loading />;
