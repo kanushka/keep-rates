@@ -88,9 +88,9 @@ export function RecentTimeChart({
   const reversedData = [...filteredData].reverse();
 
   // Function to check if timestamp is at midnight (00:00)
-  const isMidnight = (timestamp: string) => {
+  const isDayStart = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.getHours() === 0;
+    return date.getHours() === 0 || date.getHours() === 7;
   };
 
   return (
@@ -199,7 +199,7 @@ export function RecentTimeChart({
               baseLine={minRate}
               dot={(props: DotProps) => {
                 const timestamp = props.payload.timestamp;
-                if (isMidnight(timestamp)) {
+                if (isDayStart(timestamp)) {
                   return (
                     <circle
                       cx={props.cx}
