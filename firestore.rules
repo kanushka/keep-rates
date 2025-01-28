@@ -8,12 +8,26 @@ service cloud.firestore {
       allow write: if false;
     }
     
-    // Allow read access to cbslRates collection from anywhere
-    // But allow write access only from keeprates.kanushka.com domain
+    // Allow read and write access to cbslRates collection with validation
     match /cbslRates/{document=**} {
       allow read: if true;
-      allow write: if request.auth == null && 
-        request.headers.origin == 'https://keeprates.kanushka.com';
+      allow write: if 
+        // Validate required fields
+        request.resource.data.keys().hasAll(['date', 'rate', 'timestamp']) &&
+        // Validate date format (YYYY-MM-DD)
+        request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$') &&
+        // Validate rate is a number and within reasonable range (0-1000)
+        request.resource.data.rate is number &&
+        request.resource.data.rate > 0 &&
+        request.resource.data.rate < 1000 &&
+        // Validate timestamp is an ISO string
+        request.resource.data.timestamp.matches('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$') &&
+        // Ensure timestamp matches the date
+        request.resource.data.timestamp.matches('^' + request.resource.data.date + '.*$') &&
+        // Prevent future dates
+        request.resource.data.timestamp <= request.time &&
+        // Only allow creation of new documents, no updates
+        !exists(/databases/$(database)/documents/cbslRates/$(document));
     }
   }
 }
