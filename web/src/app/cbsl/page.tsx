@@ -40,11 +40,12 @@ export default function CBSLRatesPage() {
         .trim()
         .split("\n")
         .map((line) => {
-          const [date, rate] = line.trim().split(/\s+/);
+          const [date, rate] = line.trim().split(/[\t\s]+/);
+          const timestamp = new Date(date + "T00:00:00.000Z").toISOString();
           return {
             date,
             rate: Number(parseFloat(rate).toFixed(2)),
-            timestamp: new Date(date).toISOString(),
+            timestamp
           };
         })
         .filter((rate) => !isNaN(rate.rate) && rate.date);
