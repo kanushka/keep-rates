@@ -24,8 +24,6 @@ service cloud.firestore {
         request.resource.data.timestamp.matches('^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$') &&
         // Ensure timestamp matches the date
         request.resource.data.timestamp.matches('^' + request.resource.data.date + '.*$') &&
-        // Prevent future dates
-        request.resource.data.timestamp <= request.time &&
         // Only allow creation of new documents, no updates
         !exists(/databases/$(database)/documents/cbslRates/$(document));
     }
