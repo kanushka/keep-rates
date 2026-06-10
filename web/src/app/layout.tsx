@@ -27,6 +27,15 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <div className="bg-amber-500 text-black text-center py-2 px-4 text-sm font-medium">
+          This is an archived version.{" "}
+          <a
+            href="https://keeprates.kanushka.com"
+            className="underline font-semibold hover:opacity-80"
+          >
+            Visit the new Keep Rates →
+          </a>
+        </div>
         {children}
       </body>
     </html>

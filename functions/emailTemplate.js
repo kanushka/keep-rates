@@ -95,7 +95,7 @@ const createEmailTemplate = ({
                                 </a>.
                             </p>
                             <p style="margin-top: 20px; margin-bottom: 20px;">
-                                Visit <a href="https://keeprates.kanushka.com/" target="_blank">
+                                Visit <a href="https://legacy.keeprates.kanushka.com/" target="_blank">
                                     KeepRates
                                 </a> for more detailed analysis.
                             </p>
